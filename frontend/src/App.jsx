@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
+import logo from "./assets/logo_sidebar.svg";
 
 const API_BASE = "http://localhost:8000";
 const WS_BASE = "ws://localhost:8000";
@@ -15,9 +16,14 @@ function App() {
   const [logs, setLogs] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
   const [activeTab, setActiveTab] = useState("config");
+  const [selectedHtml, setSelectedHtml] = useState(null);
   const [results, setResults] = useState([]);
   const [runId, setRunId] = useState(null);
-  const [selectedHtml, setSelectedHtml] = useState(null);
+  const [solvers, setSolvers] = useState(["appsi_highs", "cbc"]);
+  const [backendStatus, setBackendStatus] = useState("checking");
+  const [showFileBrowser, setShowFileBrowser] = useState(false);
+  const [files, setFiles] = useState([]);
+  const [currentPath, setCurrentPath] = useState(".");
   const terminalRef = useRef(null);
   const ws = useRef(null);
 
@@ -26,6 +32,60 @@ function App() {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
   }, [logs]);
+
+  useEffect(() => {
+    checkBackend();
+    const interval = setInterval(checkBackend, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const checkBackend = async () => {
+    try {
+      const resp = await fetch(`${API_BASE}/health`);
+      if (resp.ok) {
+        setBackendStatus("connected");
+        fetchSolvers();
+      } else {
+        setBackendStatus("error");
+      }
+    } catch (e) {
+      setBackendStatus("disconnected");
+    }
+  };
+
+  const fetchSolvers = async () => {
+    try {
+      const resp = await fetch(`${API_BASE}/api/solvers`);
+      if (resp.ok) {
+        const data = await resp.json();
+        setSolvers(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch solvers", e);
+    }
+  };
+
+  const fetchFiles = async (path = ".") => {
+    try {
+      const resp = await fetch(`${API_BASE}/api/files?path=${encodeURIComponent(path)}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        setFiles(data);
+        setCurrentPath(path);
+      }
+    } catch (e) {
+      console.error("Failed to fetch files", e);
+    }
+  };
+
+  const navigateTo = (item) => {
+    if (item.is_dir) {
+      fetchFiles(item.path);
+    } else {
+      setConfig((prev) => ({ ...prev, input_database: item.path }));
+      setShowFileBrowser(false);
+    }
+  };
 
   const fetchResults = async (id) => {
     try {
@@ -66,8 +126,15 @@ function App() {
       }
     };
 
+    ws.current.onerror = (err) => {
+      console.error("WS connection error", err);
+      setLogs((prev) => [...prev, "❌ WebSocket Connection Error. Check if backend is running."]);
+      setIsRunning(false);
+    };
+
     ws.current.onclose = () => {
       console.log("WS closed");
+      setIsRunning(false);
     };
   };
 
@@ -97,11 +164,81 @@ function App() {
     setConfig((prev) => ({ ...prev, [name]: value }));
   };
 
+  const FileBrowser = () => (
+    <div className="file-browser-modal">
+      <div className="file-browser-content">
+        <div className="file-browser-header">
+          <h3>Select Input File</h3>
+          <button onClick={() => setShowFileBrowser(false)} className="close-btn">
+            &times;
+          </button>
+        </div>
+        <div className="file-browser-path">
+          <code>{currentPath}</code>
+          <button onClick={() => fetchFiles(currentPath + "/..")} className="back-btn">
+            Up
+          </button>
+        </div>
+        <div className="file-browser-list">
+          {files.map((file, i) => (
+            <div
+              key={i}
+              className={`file-item ${file.is_dir ? "dir" : "file"}`}
+              onClick={() => navigateTo(file)}
+            >
+              <span className="icon">{file.is_dir ? "📁" : "📄"}</span>
+              <span className="name">{file.name}</span>
+            </div>
+          ))}
+          {files.length === 0 && <div className="no-files">No files found</div>}
+        </div>
+      </div>
+    </div>
+  );
+
+  const SetupInstructions = () => (
+    <div className="setup-instructions">
+      <h3>Client Setup Instructions</h3>
+      <div className="instruction-steps">
+        <div className="step">
+          <div className="step-number">1</div>
+          <div className="step-content">
+            <strong>Install uv:</strong>
+            <code>curl -sSfL https://astral.sh/uv/install.sh | sh</code>
+          </div>
+        </div>
+        <div className="step">
+          <div className="step-number">2</div>
+          <div className="step-content">
+            <strong>Install Solvers(optional, HiGHs is Temoa default)</strong>
+          </div>
+        </div>
+        <div className="step">
+          <div className="step-number">3</div>
+          <div className="step-content">
+            <strong>Run Backend:</strong>
+            <code>uv run https://temoaproject.org/temoa_runner.py</code>
+          </div>
+        </div>
+      </div>
+      <div className="setup-note">
+        <p>Ensure the local backend is running before starting a simulation.</p>
+      </div>
+    </div>
+  );
+
   return (
     <div className="app-container">
       <div className="sidebar">
         <div className="logo">
-          TEMOA <span>GUI</span>
+          <img src={logo} alt="Temoa Logo" />
+        </div>
+        <div className={`status-badge ${backendStatus}`}>
+          {backendStatus === "connected"
+            ? "● Local Compute Ready"
+            : backendStatus === "checking"
+              ? "○ Checking Local..."
+              : "● Local Compute Offline"}
         </div>
         <nav>
           <div
@@ -138,12 +275,24 @@ function App() {
             <div className="config-grid">
               <div>
                 <label>Input Source (.sqlite or .toml)</label>
-                <input
-                  type="text"
-                  name="input_database"
-                  value={config.input_database}
-                  onChange={handleChange}
-                />
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <input
+                    type="text"
+                    name="input_database"
+                    value={config.input_database}
+                    onChange={handleChange}
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    onClick={() => {
+                      fetchFiles();
+                      setShowFileBrowser(true);
+                    }}
+                    className="action-btn"
+                  >
+                    Browse
+                  </button>
+                </div>
               </div>
               <div>
                 <label>Scenario Mode</label>
@@ -158,10 +307,11 @@ function App() {
               <div>
                 <label>Solver</label>
                 <select name="solver_name" value={config.solver_name} onChange={handleChange}>
-                  <option value="appsi_highs">HiGHS</option>
-                  <option value="cbc">CBC</option>
-                  <option value="gurobi">Gurobi</option>
-                  <option value="cplex">CPLEX</option>
+                  {solvers.map((s) => (
+                    <option key={s} value={s}>
+                      {s.toUpperCase()}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -178,12 +328,25 @@ function App() {
               </div>
             </div>
             <div style={{ marginTop: "30px" }}>
-              <button onClick={handleRun} disabled={isRunning || !config.input_database}>
-                {isRunning ? "Running Model..." : "Start Simulation"}
+              <button
+                onClick={handleRun}
+                disabled={isRunning || !config.input_database || backendStatus !== "connected"}
+              >
+                {backendStatus !== "connected"
+                  ? "Backend Offline"
+                  : isRunning
+                    ? "Running Model..."
+                    : "Start Simulation"}
               </button>
             </div>
+
+            <hr style={{ margin: "40px 0", border: "none", borderTop: "1px solid #e2e8f0" }} />
+
+            <SetupInstructions />
           </div>
         )}
+
+        {showFileBrowser && <FileBrowser />}
 
         {activeTab === "logs" && (
           <div className="card">

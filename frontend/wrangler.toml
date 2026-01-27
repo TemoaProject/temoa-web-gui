@@ -1,0 +1,6 @@
+name = "temoa-web-gui"
+compatibility_date = "2024-04-01"
+
+[pages]
+# The directory containing build output
+directory = "dist"
