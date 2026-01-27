@@ -1,0 +1,31 @@
+# ignore all root items
+/*
+
+# unignore folders
+!assets/
+!backend/
+!frontend/
+
+# unignore files
+!.gitignore
+!.gitattributes
+!README.md
+!pyproject.toml
+!uv.lock
+!.python-version
+!run.sh
+!.pre-commit-config.yaml
+!.coderabbit.yaml
+
+# recursively re-ignore
+__pycache__/
+*.pyc
+node_modules/
+dist/
+.DS_Store
+.pytest_cache/
+
+# ignore built outputs
+output/
+frontend/dist/
+frontend/node_modules/
