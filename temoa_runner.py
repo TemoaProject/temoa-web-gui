@@ -381,6 +381,7 @@ async def websocket_endpoint(websocket: WebSocket):
 if __name__ == "__main__":
     import uvicorn
     import subprocess
+    import os
 
     ensure_assets()
 
@@ -388,14 +389,25 @@ if __name__ == "__main__":
     print("Starting Datasette on port 8001...", flush=True)
     try:
         log_file = open("datasette.log", "a")
-        # Prepare list of things to serve: output directory and tutorial db
-        to_serve = [str(Path("output").absolute())]
+
+        # Create output directory if missing
+        output_base = Path("output")
+        output_base.mkdir(exist_ok=True)
+
         tutorial_db = Path("assets/tutorial_database.sqlite")
+
+        # Discover all sqlite files in the output directory recursively
+        to_serve = [str(p.absolute()) for p in output_base.rglob("*.sqlite")]
         if tutorial_db.exists():
             to_serve.append(str(tutorial_db.absolute()))
 
-        # Use sys.executable -m datasette to ensure we run in the same environment
-        # Only serve the results and tutorial data, NOT the whole root (prevents config.json errors)
+        # Isolate Datasette from host configs (like ~/.datasette/config.json)
+        # by pointing HOME to a known clean location.
+        env = os.environ.copy()
+        env["HOME"] = str(Path(".").absolute())
+
+        # Use sys.executable -m datasette to ensure we run in the same environment.
+        # We serve ONLY the explicit database files found.
         subprocess.Popen(
             [
                 sys.executable,
@@ -413,6 +425,7 @@ if __name__ == "__main__":
             ],
             stdout=log_file,
             stderr=log_file,
+            env=env,
         )
         print(
             "Datasette process launched. (Logs available in datasette.log)", flush=True
