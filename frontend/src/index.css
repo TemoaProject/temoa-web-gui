@@ -165,14 +165,18 @@ label {
 }
 
 .logo {
-  margin-bottom: 5px;
+  margin-bottom: 25px;
+  margin-top: 10px;
   display: flex;
+  justify-content: center;
   align-items: center;
+  padding: 0 10px;
 }
 
 .logo img {
-  max-width: 180px;
+  max-width: 130px;
   height: auto;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.05));
 }
 
 .status-badge {
@@ -225,8 +229,8 @@ label {
 /* Grid for Form Table */
 .config-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
 }
 
 /* Log Terminal */

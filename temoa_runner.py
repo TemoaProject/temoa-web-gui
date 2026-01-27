@@ -16,6 +16,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
+import urllib.request
 
 from fastapi import (
     FastAPI,
@@ -109,9 +110,29 @@ def health_check():
     return {"status": "ok"}
 
 
+def ensure_assets():
+    """Download tutorial assets if they are missing."""
+    base_url = (
+        "https://raw.githubusercontent.com/TemoaProject/temoa-web-gui/main/assets/"
+    )
+    assets_dir = Path("assets")
+    assets_dir.mkdir(exist_ok=True)
+
+    files = ["tutorial_database.sqlite", "tutorial_config.toml"]
+    for f in files:
+        target = assets_dir / f
+        if not target.exists():
+            print(f"Downloading missing asset: {f}...")
+            try:
+                urllib.request.urlretrieve(base_url + f, target)
+            except Exception as e:
+                print(f"Failed to download {f}: {e}")
+
+
 @app.get("/api/config")
 def get_config():
     """Return key configuration paths and settings for the frontend."""
+    ensure_assets()
     # In the runner, we assume assets are in the current directory or nearby
     tutorial_db = Path("assets/tutorial_database.sqlite")
     return {
@@ -361,13 +382,27 @@ if __name__ == "__main__":
     import uvicorn
     import subprocess
 
+    ensure_assets()
+
     # Start Datasette in a subprocess
-    print("Starting Datasette on port 8001...")
+    print("Starting Datasette on port 8001...", flush=True)
     try:
+        log_file = open("datasette.log", "a")
+        # Prepare list of things to serve: output directory and tutorial db
+        to_serve = [str(Path("output").absolute())]
+        tutorial_db = Path("assets/tutorial_database.sqlite")
+        if tutorial_db.exists():
+            to_serve.append(str(tutorial_db.absolute()))
+
+        # Use sys.executable -m datasette to ensure we run in the same environment
+        # Only serve the results and tutorial data, NOT the whole root (prevents config.json errors)
         subprocess.Popen(
             [
+                sys.executable,
+                "-m",
                 "datasette",
-                ".",
+                "serve",
+                *to_serve,
                 "--port",
                 "8001",
                 "--host",
@@ -376,10 +411,13 @@ if __name__ == "__main__":
                 "sql_time_limit_ms",
                 "5000",
             ],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stdout=log_file,
+            stderr=log_file,
+        )
+        print(
+            "Datasette process launched. (Logs available in datasette.log)", flush=True
         )
     except Exception as e:
-        print(f"Warning: Could not start Datasette: {e}")
+        print(f"Warning: Could not start Datasette: {e}", flush=True)
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
