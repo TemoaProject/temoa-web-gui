@@ -108,6 +108,27 @@ def health_check():
     return {"status": "ok"}
 
 
+@app.get("/api/config")
+def get_config():
+    """Return key configuration paths and settings for the frontend."""
+    # Try to find the tutorial database
+    assets_path = Path("assets")
+    tutorial_db = assets_path / "tutorial_database.sqlite"
+    if not tutorial_db.exists():
+        # Fallback to hardcoded absolute path if running from specific env
+        tutorial_db = Path(
+            "/media/Secondary/Projects/TemoaProject/temoa-web-gui/assets/tutorial_database.sqlite"
+        )
+
+    return {
+        "tutorial_database": str(tutorial_db.absolute())
+        if tutorial_db.exists()
+        else None,
+        "explorer_port": 8001,
+        "api_port": 8000,
+    }
+
+
 @app.get("/api/files")
 def list_files(path: str = "."):
     """Helper to browse files for input database selection."""

@@ -7,10 +7,11 @@ const WS_BASE = "ws://localhost:8000";
 
 function App() {
   const [config, setConfig] = useState({
-    input_database: "assets/tutorial_database.sqlite",
+    input_database: "",
     scenario_mode: "perfect_foresight",
     solver_name: "appsi_highs",
     time_sequencing: "seasonal_timeslices",
+    explorer_port: 8001,
   });
 
   const [logs, setLogs] = useState([]);
@@ -45,11 +46,34 @@ function App() {
       if (resp.ok) {
         setBackendStatus("connected");
         fetchSolvers();
+        fetchConfig();
       } else {
         setBackendStatus("error");
       }
     } catch (e) {
       setBackendStatus("disconnected");
+    }
+  };
+
+  const fetchConfig = async () => {
+    try {
+      const resp = await fetch(`${API_BASE}/api/config`);
+      if (resp.ok) {
+        const data = await resp.json();
+        // If we don't have a path yet or it's the default, update it
+        if (
+          data.tutorial_database &&
+          (!config.input_database || config.input_database.includes("tutorial"))
+        ) {
+          setConfig((prev) => ({
+            ...prev,
+            input_database: data.tutorial_database,
+            explorer_port: data.explorer_port || 8001,
+          }));
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch config", e);
     }
   };
 
@@ -217,12 +241,20 @@ function App() {
           <div className="step-number">3</div>
           <div className="step-content">
             <strong>Run Backend:</strong>
-            <code>uv run https://temoaproject.org/temoa_runner.py</code>
+            <code>
+              uv run
+              https://raw.githubusercontent.com/TemoaProject/temoa-web-gui/refs/heads/main/temoa_runner.py
+            </code>
           </div>
         </div>
       </div>
       <div className="setup-note">
         <p>Ensure the local backend is running before starting a simulation.</p>
+        <p style={{ marginTop: "10px", color: "#b11a1a" }}>
+          <strong>Heads up:</strong> If this GUI is hosted on HTTPS (e.g. Cloudflare) but your
+          backend is HTTP (localhost), you may need to "allow insecure content" in your browser
+          settings for this site to let the logs and explorer load.
+        </p>
       </div>
     </div>
   );
@@ -415,7 +447,7 @@ function App() {
         {activeTab === "explorer" && (
           <div className="card" style={{ padding: 0, overflow: "hidden" }}>
             <iframe
-              src="http://localhost:8001"
+              src={`http://${new URL(API_BASE).hostname}:${config.explorer_port || 8001}`}
               width="100%"
               height="100%"
               title="Datasette Explorer"

@@ -6,6 +6,7 @@
 #     "uvicorn[standard]",
 #     "tomlkit",
 #     "websockets",
+#     "datasette",
 # ]
 # ///
 
@@ -106,6 +107,20 @@ class WebSocketLogHandler(logging.Handler):
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+@app.get("/api/config")
+def get_config():
+    """Return key configuration paths and settings for the frontend."""
+    # In the runner, we assume assets are in the current directory or nearby
+    tutorial_db = Path("assets/tutorial_database.sqlite")
+    return {
+        "tutorial_database": str(tutorial_db.absolute())
+        if tutorial_db.exists()
+        else None,
+        "explorer_port": 8001,
+        "api_port": 8000,
+    }
 
 
 @app.get("/api/files")
@@ -344,5 +359,27 @@ async def websocket_endpoint(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
+    import subprocess
+
+    # Start Datasette in a subprocess
+    print("Starting Datasette on port 8001...")
+    try:
+        subprocess.Popen(
+            [
+                "datasette",
+                ".",
+                "--port",
+                "8001",
+                "--host",
+                "0.0.0.0",
+                "--setting",
+                "sql_time_limit_ms",
+                "5000",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception as e:
+        print(f"Warning: Could not start Datasette: {e}")
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
