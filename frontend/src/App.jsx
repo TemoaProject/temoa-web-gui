@@ -60,20 +60,35 @@ function App() {
       const resp = await fetch(`${API_BASE}/api/config`);
       if (resp.ok) {
         const data = await resp.json();
-        // If we don't have a path yet or it's the default, update it
-        if (
-          data.tutorial_database &&
-          (!config.input_database || config.input_database.includes("tutorial"))
-        ) {
-          setConfig((prev) => ({
-            ...prev,
-            input_database: data.tutorial_database,
-            explorer_port: data.explorer_port || 8001,
-          }));
-        }
+        // Update ports if needed, but DO NOT overwrite input_database automatically
+        setConfig((prev) => ({
+          ...prev,
+          explorer_port: data.explorer_port || 8001,
+        }));
       }
     } catch (e) {
       console.error("Failed to fetch config", e);
+    }
+  };
+
+  const downloadTutorial = async () => {
+    try {
+      const resp = await fetch(`${API_BASE}/api/download_tutorial`, { method: "POST" });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.path) {
+          setConfig((prev) => ({
+            ...prev,
+            input_database: data.path,
+          }));
+          // Also refresh files to show the assets folder if needed
+          fetchFiles(currentPath);
+        }
+      } else {
+        alert("Failed to download tutorial data.");
+      }
+    } catch (e) {
+      console.error("Error downloading tutorial:", e);
     }
   };
 
@@ -314,6 +329,7 @@ function App() {
                     value={config.input_database}
                     onChange={handleChange}
                     style={{ flex: 1 }}
+                    placeholder="/path/to/database.sqlite"
                   />
                   <button
                     onClick={() => {
@@ -323,6 +339,13 @@ function App() {
                     className="action-btn"
                   >
                     Browse
+                  </button>
+                  <button
+                    onClick={downloadTutorial}
+                    className="action-btn secondary"
+                    title="Download and use sample data"
+                  >
+                    Use Tutorial
                   </button>
                 </div>
               </div>

@@ -132,7 +132,6 @@ def ensure_assets():
 @app.get("/api/config")
 def get_config():
     """Return key configuration paths and settings for the frontend."""
-    ensure_assets()
     # In the runner, we assume assets are in the current directory or nearby
     tutorial_db = Path("assets/tutorial_database.sqlite")
     return {
@@ -142,6 +141,18 @@ def get_config():
         "explorer_port": 8001,
         "api_port": 8000,
     }
+
+
+@app.post("/api/download_tutorial")
+def download_tutorial():
+    """Explicitly download tutorial assets."""
+    ensure_assets()
+    tutorial_db = Path("assets/tutorial_database.sqlite")
+    if tutorial_db.exists():
+        # Ensure it's served
+        start_datasette(str(tutorial_db.absolute()))
+        return {"path": str(tutorial_db.absolute())}
+    raise HTTPException(status_code=500, detail="Failed to download tutorial assets")
 
 
 @app.get("/api/files")
@@ -324,6 +335,16 @@ async def run_temoa_task(config: RunConfig, output_dir: Path, loop):
             f"Output Database target: {run_toml['output_database']}"
         )
 
+        # Ensure this output database is being served by Datasette
+        # If it's outside our known list, restart datasette to include it.
+        # We do this before starting the run so the user can see it appear or update.
+        try:
+            target_db = run_toml["output_database"]
+            if target_db:
+                start_datasette(str(Path(target_db).absolute()))
+        except Exception as e:
+            print(f"Failed to refresh datasette: {e}")
+
         config_path = output_dir / "run_config.toml"
         with open(config_path, "w", encoding="utf-8") as f:
             f.write(tomlkit.dumps(run_toml))
@@ -378,43 +399,78 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 
-if __name__ == "__main__":
-    import uvicorn
+# --- Datasette Management ---
+DATASETTE_PROCESS = None
+SERVED_DATABASES = set()
+
+
+def start_datasette(new_db: Optional[str] = None):
+    """
+    Start or restart Datasette serving the tutorial DB + output DBs.
+    If new_db is provided and not already served, restart the process to include it.
+    """
+    global DATASETTE_PROCESS, SERVED_DATABASES
     import subprocess
     import os
+    import sys
 
-    ensure_assets()
+    # If new_db is already served, no need to restart
+    if new_db:
+        abs_new = str(Path(new_db).resolve())
+        if abs_new in SERVED_DATABASES:
+            return
+        SERVED_DATABASES.add(abs_new)
 
-    # Start Datasette in a subprocess
-    print("Starting Datasette on port 8001...", flush=True)
+    # Kill existing process if running
+    if DATASETTE_PROCESS:
+        try:
+            DATASETTE_PROCESS.terminate()
+            DATASETTE_PROCESS.wait(timeout=5)
+        except Exception:
+            try:
+                DATASETTE_PROCESS.kill()
+            except Exception:
+                pass
+
+    print("Starting/Restarting Datasette on port 8001...", flush=True)
+
     try:
         log_file = open("datasette.log", "a")
-
-        # Create output directory if missing
         output_base = Path("output")
         output_base.mkdir(exist_ok=True)
 
+        # Baseline: Tutorial DB + All found in output directory
         tutorial_db = Path("assets/tutorial_database.sqlite")
+        current_serve_list = []
 
-        # Discover all sqlite files in the output directory recursively
-        to_serve = [str(p.absolute()) for p in output_base.rglob("*.sqlite")]
+        # 1. Add recursive output/ files
+        for p in output_base.rglob("*.sqlite"):
+            current_serve_list.append(str(p.absolute()))
+
+        # 2. Add tutorial DB
         if tutorial_db.exists():
-            to_serve.append(str(tutorial_db.absolute()))
+            current_serve_list.append(str(tutorial_db.absolute()))
 
-        # Isolate Datasette from host configs (like ~/.datasette/config.json)
-        # by pointing HOME to a known clean location.
+        # 3. Add any globally tracked external databases (like the new input/output one)
+        #    Merge them in to ensure we serve what we've seen so far.
+        for db_path in SERVED_DATABASES:
+            if db_path not in current_serve_list:
+                current_serve_list.append(db_path)
+
+        # Deduplicate just in case
+        final_serve_list = list(set(current_serve_list))
+
+        # Isolate Datasette environment
         env = os.environ.copy()
         env["HOME"] = str(Path(".").absolute())
 
-        # Use sys.executable -m datasette to ensure we run in the same environment.
-        # We serve ONLY the explicit database files found.
-        subprocess.Popen(
+        DATASETTE_PROCESS = subprocess.Popen(
             [
                 sys.executable,
                 "-m",
                 "datasette",
                 "serve",
-                *to_serve,
+                *final_serve_list,
                 "--port",
                 "8001",
                 "--host",
@@ -430,7 +486,14 @@ if __name__ == "__main__":
         print(
             "Datasette process launched. (Logs available in datasette.log)", flush=True
         )
+
     except Exception as e:
         print(f"Warning: Could not start Datasette: {e}", flush=True)
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    start_datasette()  # Initial start
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
