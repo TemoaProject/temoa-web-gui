@@ -4,6 +4,12 @@
 uv sync
 uv add "uvicorn[standard]" websockets
 
+# Cleanup existing processes if running
+echo "Cleaning up stale processes..."
+fuser -k 8000/tcp 2>/dev/null
+fuser -k 8001/tcp 2>/dev/null
+sleep 1
+
 # Start FastAPI backend in background
 echo "Starting backend..."
 uv run python backend/main.py &

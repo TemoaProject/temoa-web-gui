@@ -1404,6 +1404,12 @@ dependencies = [
     { name = "websockets" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "httpx" },
+    { name = "pytest" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "datasette" },
@@ -1412,6 +1418,12 @@ requires-dist = [
     { name = "tomlkit" },
     { name = "uvicorn", extras = ["standard"] },
     { name = "websockets" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "pytest", specifier = ">=9.0.2" },
 ]
 
 [[package]]

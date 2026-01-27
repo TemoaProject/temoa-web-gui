@@ -12,3 +12,16 @@ dependencies = [
     "datasette",
     "websockets",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["backend/tests"]
+filterwarnings = [
+    "ignore:.*deprecated - use.*:pyparsing.PyparsingDeprecationWarning",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.0.2",
+]

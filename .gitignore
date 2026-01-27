@@ -14,6 +14,10 @@
 !uv.lock
 !.python-version
 !run.sh
+!hosting_instructions.md
+!temoa_runner.py
+!frontend/wrangler.toml
+!.github/
 !.pre-commit-config.yaml
 !.coderabbit.yaml
 
