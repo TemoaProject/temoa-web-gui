@@ -265,11 +265,6 @@ function App() {
       </div>
       <div className="setup-note">
         <p>Ensure the local backend is running before starting a simulation.</p>
-        <p style={{ marginTop: "10px", color: "#b11a1a" }}>
-          <strong>Heads up:</strong> If this GUI is hosted on HTTPS (e.g. Cloudflare) but your
-          backend is HTTP (localhost), you may need to "allow insecure content" in your browser
-          settings for this site to let the logs and explorer load.
-        </p>
       </div>
     </div>
   );
