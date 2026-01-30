@@ -7,16 +7,21 @@
 #     "tomlkit",
 #     "websockets",
 #     "datasette",
+#     "certifi",
 # ]
 # ///
 
 import asyncio
 import logging
 import sys
+import shutil
+import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
 import urllib.request
+import os
+import certifi
+import ssl
 
 from fastapi import (
     FastAPI,
@@ -28,6 +33,32 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
+
+def create_secure_ssl_context():
+    """
+    Creates a secure SSL context using certifi's CA bundle.
+    Allows bypassing verification ONLY if TEMOA_SKIP_CERT_VERIFY is set to '1'.
+
+    NOTE: This function is intentionally duplicated from backend/utils.py
+    to maintain temoa_runner.py as a standalone script.
+    See: backend/utils.py:create_secure_ssl_context
+    """
+    skip_verify = os.environ.get("TEMOA_SKIP_CERT_VERIFY") == "1"
+
+    if skip_verify:
+        logging.warning(
+            "SSL certificate verification is DISABLED via TEMOA_SKIP_CERT_VERIFY."
+        )
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        return ctx
+
+    # Secure default using certifi
+    ctx = ssl.create_default_context(cafile=certifi.where())
+    return ctx
+
 
 # --- Temoa Imports ---
 # We assume temoa is installed in the same environment
@@ -62,13 +93,13 @@ class RunConfig(BaseModel):
     scenario_mode: str = "perfect_foresight"
     solver_name: str = "appsi_highs"
     time_sequencing: str = "seasonal_timeslices"
-    output_dir: Optional[str] = None
+    output_dir: str | None = None
 
 
 # --- Log Management ---
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: List[WebSocket] = []
+        self.active_connections: list[WebSocket] = []
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
@@ -116,17 +147,31 @@ def ensure_assets():
         "https://raw.githubusercontent.com/TemoaProject/temoa-web-gui/main/assets/"
     )
     assets_dir = Path("assets")
-    assets_dir.mkdir(exist_ok=True)
+    assets_dir.mkdir(parents=True, exist_ok=True)
 
     files = ["tutorial_database.sqlite", "tutorial_config.toml"]
+
+    ctx = create_secure_ssl_context()
+
     for f in files:
         target = assets_dir / f
         if not target.exists():
             print(f"Downloading missing asset: {f}...")
+            temp_target = target.with_suffix(".part")
             try:
-                urllib.request.urlretrieve(base_url + f, target)
+                url = base_url + f
+                with urllib.request.urlopen(url, context=ctx, timeout=10) as response:
+                    with open(temp_target, "wb") as out_file:
+                        shutil.copyfileobj(response, out_file)
+                # Atomic rename
+                temp_target.replace(target)
             except Exception as e:
                 print(f"Failed to download {f}: {e}")
+                if temp_target.exists():
+                    try:
+                        temp_target.unlink()
+                    except Exception:
+                        pass
 
 
 @app.get("/api/config")
@@ -400,18 +445,16 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 # --- Datasette Management ---
-DATASETTE_PROCESS = None
-SERVED_DATABASES = set()
+DATASETTE_PROCESS: subprocess.Popen | None = None
+SERVED_DATABASES: set[str] = set()
 
 
-def start_datasette(new_db: Optional[str] = None):
+def start_datasette(new_db: str | None = None):
     """
     Start or restart Datasette serving the tutorial DB + output DBs.
     If new_db is provided and not already served, restart the process to include it.
     """
     global DATASETTE_PROCESS, SERVED_DATABASES
-    import subprocess
-    import os
     import sys
 
     # If new_db is already served, no need to restart
