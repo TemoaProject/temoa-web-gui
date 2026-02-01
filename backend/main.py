@@ -15,6 +15,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
+import urllib.request
+import shutil
+
+from .utils import create_secure_ssl_context
 
 from fastapi import (
     FastAPI,
@@ -150,6 +154,36 @@ def list_files(path: str = "."):
         return items
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/download_tutorial")
+def download_tutorial():
+    """Downloads the tutorial database from the main repo."""
+    assets_path = Path("assets")
+    assets_path.mkdir(parents=True, exist_ok=True)
+    target_path = assets_path / "tutorial_database.sqlite"
+    temp_path = target_path.with_suffix(".tmp")
+
+    try:
+        url = "https://raw.githubusercontent.com/TemoaProject/temoa-web-gui/main/assets/tutorial_database.sqlite"
+        ctx = create_secure_ssl_context()
+
+        with urllib.request.urlopen(url, context=ctx, timeout=10) as response:
+            with open(temp_path, "wb") as out_file:
+                shutil.copyfileobj(response, out_file)
+
+        # Atomic replace
+        temp_path.replace(target_path)
+        return {"status": "ok", "path": str(target_path.absolute())}
+    except Exception as e:
+        logging.exception("Failed to download tutorial")
+        raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}") from e
+    finally:
+        if temp_path.exists():
+            try:
+                temp_path.unlink()
+            except Exception:
+                pass
 
 
 @app.get("/api/solvers")

@@ -1396,6 +1396,7 @@ name = "temoa-web-gui"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "certifi" },
     { name = "datasette" },
     { name = "fastapi" },
     { name = "temoa" },
@@ -1412,6 +1413,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "certifi" },
     { name = "datasette" },
     { name = "fastapi" },
     { name = "temoa", specifier = ">=4.0.0a1" },
