@@ -1,7 +1,7 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = [
-#     "temoa>=4.0.0a1",
+#     "temoa>=4.0.0",
 #     "fastapi",
 #     "uvicorn[standard]",
 #     "tomlkit",
@@ -63,8 +63,7 @@ def create_secure_ssl_context():
 # --- Temoa Imports ---
 # We assume temoa is installed in the same environment
 try:
-    from temoa._internal.temoa_sequencer import TemoaSequencer
-    from temoa.core.config import TemoaConfig
+    from temoa import TemoaSequencer, TemoaConfig
 except ImportError:
     # For development if temoa is not in path
     TemoaSequencer = None
@@ -142,36 +141,56 @@ def health_check():
 
 
 def ensure_assets():
-    """Download tutorial assets if they are missing."""
+    """Download tutorial assets if they are missing.
+    In Temoa 4.0+, we can use the built-in tutorial command to get the latest assets.
+    """
+    assets_dir = Path("assets")
+    assets_dir.mkdir(parents=True, exist_ok=True)
+
+    tutorial_db = assets_dir / "tutorial_database.sqlite"
+    tutorial_config = assets_dir / "tutorial_config.toml"
+
+    if not tutorial_db.exists() or not tutorial_config.exists():
+        print("Tutorial assets missing or incomplete. Generating from Temoa...")
+        try:
+            # Run temoa tutorial in the assets directory
+            subprocess.run(
+                [sys.executable, "-m", "temoa", "tutorial", "-f"],
+                cwd=str(assets_dir.absolute()),
+                check=True,
+                capture_output=True,
+            )
+            print("Tutorial assets generated successfully.")
+        except Exception as e:
+            print(f"Failed to generate tutorial assets via temoa CLI: {e}")
+            # Fallback to legacy download if CLI fails
+            _download_legacy_assets()
+
+
+def _download_legacy_assets():
+    """Fallback download from GitHub if temoa CLI is unavailable."""
     base_url = (
         "https://raw.githubusercontent.com/TemoaProject/temoa-web-gui/main/assets/"
     )
     assets_dir = Path("assets")
-    assets_dir.mkdir(parents=True, exist_ok=True)
-
     files = ["tutorial_database.sqlite", "tutorial_config.toml"]
-
     ctx = create_secure_ssl_context()
 
     for f in files:
         target = assets_dir / f
         if not target.exists():
-            print(f"Downloading missing asset: {f}...")
+            print(f"Downloading legacy asset from GitHub: {f}...")
             temp_target = target.with_suffix(".part")
             try:
                 url = base_url + f
                 with urllib.request.urlopen(url, context=ctx, timeout=10) as response:
                     with open(temp_target, "wb") as out_file:
                         shutil.copyfileobj(response, out_file)
-                # Atomic rename
                 temp_target.replace(target)
             except Exception as e:
                 print(f"Failed to download {f}: {e}")
                 if temp_target.exists():
-                    try:
-                        temp_target.unlink()
-                    except Exception:
-                        pass
+                    temp_target.unlink()
 
 
 @app.get("/api/config")
@@ -402,6 +421,17 @@ async def run_temoa_task(config: RunConfig, output_dir: Path, loop):
         await manager.broadcast("Starting Sequencer...")
         sequencer = TemoaSequencer(config=temoa_config)
 
+        # Stop Datasette during the run to prevent database locking issues
+        global DATASETTE_PROCESS
+        if DATASETTE_PROCESS:
+            try:
+                await manager.broadcast("Pausing Data Explorer during simulation...")
+                DATASETTE_PROCESS.terminate()
+                DATASETTE_PROCESS.wait(timeout=5)
+                DATASETTE_PROCESS = None
+            except Exception:
+                pass
+
         await asyncio.to_thread(sequencer.start)
         await manager.broadcast(f"✅ Run {run_id} completed successfully.")
         await manager.broadcast(f"RESULTS_READY:{run_id}")
@@ -413,6 +443,12 @@ async def run_temoa_task(config: RunConfig, output_dir: Path, loop):
         for line in traceback.format_exc().splitlines():
             await manager.broadcast(line)
     finally:
+        # Restart Datasette after the run
+        try:
+            start_datasette()
+        except Exception:
+            pass
+
         sys.stdout = old_stdout
         sys.stderr = old_stderr
         root_logger.removeHandler(ws_handler)

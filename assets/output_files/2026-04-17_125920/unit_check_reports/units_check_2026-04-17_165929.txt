@@ -1,0 +1,18 @@
+
+========  Units Check on DB: tutorial_database.sqlite:  Started ========
+
+========  Units Check 1 (DB Version):  Started ========
+Units Check 1 (DB Version):  Passed
+
+======== Units Check 2 (Units Entries in Tables):  Started ========
+Units Check 2 (Units Entries in Tables):  Passed
+
+
+======== Units Check 3 (Tech I/O via Efficiency Table):  Started ========
+Units Check 3 (Efficiency):  Passed
+
+======== Units Check 4 (Related Tables):  Started ========
+Units Check 4: (Related Tables):  Passed
+
+======== Units Check 5 (Cost Tables):  Started ========
+Units Check 5 (Cost Tables):  Passed

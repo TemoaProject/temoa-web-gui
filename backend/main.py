@@ -1,7 +1,7 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = [
-#     "temoa>=4.0.0a1",
+#     "temoa>=4.0.0",
 #     "fastapi",
 #     "uvicorn[standard]",
 #     "tomlkit",
@@ -18,7 +18,10 @@ from typing import List, Optional
 import urllib.request
 import shutil
 
-from .utils import create_secure_ssl_context
+try:
+    from .utils import create_secure_ssl_context
+except ImportError:
+    from utils import create_secure_ssl_context
 
 from fastapi import (
     FastAPI,
@@ -34,8 +37,7 @@ from pydantic import BaseModel
 # --- Temoa Imports ---
 # We assume temoa is installed in the same environment
 try:
-    from temoa._internal.temoa_sequencer import TemoaSequencer
-    from temoa.core.config import TemoaConfig
+    from temoa import TemoaSequencer, TemoaConfig
 except ImportError:
     # For development if temoa is not in path
     TemoaSequencer = None
@@ -158,12 +160,32 @@ def list_files(path: str = "."):
 
 @app.post("/api/download_tutorial")
 def download_tutorial():
-    """Downloads the tutorial database from the main repo."""
+    """Downloads or generates the tutorial database."""
     assets_path = Path("assets")
     assets_path.mkdir(parents=True, exist_ok=True)
     target_path = assets_path / "tutorial_database.sqlite"
-    temp_path = target_path.with_suffix(".tmp")
 
+    print("Generating tutorial assets from Temoa...")
+    try:
+        # Try built-in Temoa CLI first
+        import subprocess
+
+        subprocess.run(
+            [sys.executable, "-m", "temoa", "tutorial", "-f"],
+            cwd=str(assets_path.absolute()),
+            check=True,
+            capture_output=True,
+        )
+        return {"status": "ok", "path": str(target_path.absolute())}
+    except Exception as e:
+        logging.warning(f"Failed to generate tutorial assets via temoa CLI: {e}")
+        # Fallback to legacy download
+        return _download_legacy_tutorial(assets_path, target_path)
+
+
+def _download_legacy_tutorial(assets_path, target_path):
+    """Fallback download from GitHub."""
+    temp_path = target_path.with_suffix(".tmp")
     try:
         url = "https://raw.githubusercontent.com/TemoaProject/temoa-web-gui/main/assets/tutorial_database.sqlite"
         ctx = create_secure_ssl_context()
@@ -172,7 +194,6 @@ def download_tutorial():
             with open(temp_path, "wb") as out_file:
                 shutil.copyfileobj(response, out_file)
 
-        # Atomic replace
         temp_path.replace(target_path)
         return {"status": "ok", "path": str(target_path.absolute())}
     except Exception as e:

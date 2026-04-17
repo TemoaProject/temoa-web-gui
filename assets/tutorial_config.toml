@@ -51,6 +51,14 @@ plot_commodity_network = true
 # Recommended for production runs after units are populated in the database
 check_units = true
 
+# Limit the number of cycles detected in the commodity graph
+# -1 = unbounded (INFO), 0 = strictly disallow (ERROR), positive integer = limit
+cycle_count_limit = 100
+
+# Minimum cycle length to report (default: 1)
+# Use this to filter out very small cycles if needed
+cycle_length_limit = 1
+
 # ------------------------------------
 #             SOLVER
 #        Solver Selection
@@ -84,6 +92,13 @@ save_lp_file = false
 # graphviz dot file and svg for network visualization (requires graphviz to be installed separately)
 graphviz_output = false
 
+# Optional output filtering thresholds (set to 0 to disable per category)
+# Precedence is: TOML value > internal defaults.
+output_threshold_capacity = 0.001
+output_threshold_activity = 0.001
+output_threshold_emission = 0.001
+output_threshold_cost = 0.01
+
 # ------------------------------------
 #          MODEL PARAMETERS
 #  these are specific to each model
@@ -110,6 +125,11 @@ graphviz_output = false
 #       storage must be tagged and the TimeSeasonSequential table filled.
 time_sequencing = 'seasonal_timeslices'
 
+# Number of days represented by each planning period.
+# Used to adjust flow variables for number of days represented by each season.
+# E.g. 365 if all seasons collectively represent a year, 7 if modelling a single representative week.
+days_per_period = 365
+
 # How contributions to the planning reserve margin are calculated
 # Options:
 #   'static'
@@ -122,6 +142,30 @@ time_sequencing = 'seasonal_timeslices'
 #       For storage, contributions are (derated) actual output in each time slice:
 #                   capacity value = flow out * reserve capacity derate
 reserve_margin = 'dynamic'
+
+# ------------------------------------
+#      SQLITE PERFORMANCE TUNING
+# ------------------------------------
+
+[sqlite]
+# These settings improve database performance, especially for large-scale
+# runs and myopic/MGA modes which perform many small writes.
+
+# journal_mode: WAL (Write-Ahead Logging) provides better concurrency and speed.
+# Note: This creates sidecar files (-wal and -shm) during execution.
+journal_mode = 'WAL'
+
+# synchronous: NORMAL reduces disk flushes while remaining safe against
+# application-level crashes.
+synchronous = 'NORMAL'
+
+# mmap_size: Memory-map the database file for faster reads (bytes).
+# 8589934592 = 8GB
+mmap_size = 8589934592
+
+# cache_size: SQLite page cache size. Negative values specify size in KiB.
+# -512000 = 500MiB
+cache_size = -512000
 
 # ---------------------------------------------------
 #                   MODE OPTIONS
@@ -138,7 +182,15 @@ weighting = "hull_expansion"  # use a convex hull expansion algorithm to weight 
 
 [myopic]
 view_depth = 2   # number of periods seen/analyzed per iteration
-step_size = 1    # number of periods to step by (must be <= view depth)
+step_size = 2    # number of periods to step by (must be <= view depth)
+# Evolving mode: if true, the evolution_script is called between myopic iterations
+# to update the database. The view depth may shorten near the end of the planning
+# horizon to ensure that all iterations are performed.
+# If false, the evolution_script is not used and iterations end once view depth
+# reaches the end of the planning horizon, to avoid redundant decisions with no
+# new information.
+evolving = false
+evolution_script = "temoa/extensions/myopic/evolution_updater.py"
 
 [morris]
 perturbation = 0.10     # amount to perturb marked parameters (ex:  0.10 -> +/- 10%)
@@ -159,4 +211,4 @@ activity_labels = []
 
 [monte_carlo]
 # a path from the PROJECT ROOT to the settings file that contains the run data.
-run_settings = 'data_files/monte_carlo/run_settings_1.csv'
+run_settings = 'mc_settings.csv'

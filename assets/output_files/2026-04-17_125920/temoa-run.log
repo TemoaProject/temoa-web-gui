@@ -1,0 +1,70 @@
+2026-04-17 12:59:20 | temoa.cli | INFO | Logging initialized. Log file at: output_files/2026-04-17_125920/temoa-run.log
+2026-04-17 12:59:20 | temoa.core.config | INFO | Using solver: appsi_highs (available via Pyomo (Python package))
+2026-04-17 12:59:20 | temoa.core.config | INFO | Scenario Name:  zulu
+2026-04-17 12:59:20 | temoa.core.config | INFO | Data source:  tutorial_database.sqlite
+2026-04-17 12:59:20 | temoa.core.config | INFO | Data target:  tutorial_database.sqlite
+2026-04-17 12:59:20 | temoa.core.config | INFO | Mode:  PERFECT_FORESIGHT
+2026-04-17 12:59:29 | temoa.cli | INFO | Full run mode selected. Calling start().
+2026-04-17 12:59:29 | temoa._internal.temoa_sequencer | INFO | Running units consistency check on input database...
+2026-04-17 12:59:29 | temoa.model_checking.unit_checking.screener | INFO | Starting Units Check on DB: tutorial_database.sqlite
+2026-04-17 12:59:29 | temoa.model_checking.unit_checking.screener | INFO | ========  Units Check 1 (DB Version):  Started ========
+2026-04-17 12:59:29 | temoa.model_checking.unit_checking.screener | INFO | Units Check 1 (DB Version):  Passed
+2026-04-17 12:59:29 | temoa.model_checking.unit_checking.screener | INFO | ======== Units Check 2 (Units Entries in Tables):  Started ========
+2026-04-17 12:59:29 | temoa.model_checking.unit_checking.screener | INFO | Units Check 2 (Units Entries in Tables):  Passed
+2026-04-17 12:59:29 | temoa.model_checking.unit_checking.screener | INFO | ======== Units Check 3 (Tech I/O via Efficiency Table):  Started ========
+2026-04-17 12:59:29 | temoa.model_checking.unit_checking.screener | INFO | Units Check 3 (Efficiency):  Passed
+2026-04-17 12:59:29 | temoa.model_checking.unit_checking.screener | INFO | ======== Units Check 4 (Related Tables):  Started ========
+2026-04-17 12:59:29 | temoa.model_checking.unit_checking.screener | INFO | Units Check 4: (Related Tables):  Passed
+2026-04-17 12:59:29 | temoa.model_checking.unit_checking.screener | INFO | ======== Units Check 5 (Cost Tables):  Started ========
+2026-04-17 12:59:29 | temoa.model_checking.unit_checking.screener | INFO | Units Check 5 (Cost Tables):  Passed
+2026-04-17 12:59:29 | temoa.model_checking.unit_checking.screener | INFO | Finished Units Check
+2026-04-17 12:59:29 | temoa._internal.temoa_sequencer | INFO | Units check completed successfully - no errors found.
+2026-04-17 12:59:29 | temoa._internal.temoa_sequencer | INFO | Executing scenario in mode: TemoaMode.PERFECT_FORESIGHT
+2026-04-17 12:59:34 | temoa.utilities.sqlite_utils | WARNING | Failed to apply SQLite PRAGMA journal_mode: database is locked
+2026-04-17 12:59:34 | temoa.data_io.hybrid_loader | INFO | Loading data dictionary
+2026-04-17 12:59:34 | temoa.model_checking.commodity_network_manager | INFO | Starting network analysis for region utopia
+2026-04-17 12:59:34 | temoa.utilities.visualizer | INFO | Generated graph HTML at: /media/Secondary/Projects/TemoaProject/temoa-web-gui/assets/output_files/2026-04-17_125920/Network_Graph_utopia_1990.html
+2026-04-17 12:59:34 | temoa.model_checking.commodity_graph | INFO | Generated network graphs at: /media/Secondary/Projects/TemoaProject/temoa-web-gui/assets/output_files/2026-04-17_125920/Network_Graph_utopia_1990.html
+2026-04-17 12:59:34 | temoa.model_checking.commodity_graph | INFO | Cycle detected: ELC -> ELC
+2026-04-17 12:59:34 | temoa.utilities.visualizer | INFO | Generated graph HTML at: /media/Secondary/Projects/TemoaProject/temoa-web-gui/assets/output_files/2026-04-17_125920/Network_Graph_utopia_2000.html
+2026-04-17 12:59:34 | temoa.model_checking.commodity_graph | INFO | Generated network graphs at: /media/Secondary/Projects/TemoaProject/temoa-web-gui/assets/output_files/2026-04-17_125920/Network_Graph_utopia_2000.html
+2026-04-17 12:59:34 | temoa.model_checking.commodity_graph | INFO | Cycle detected: ELC -> ELC
+2026-04-17 12:59:34 | temoa.utilities.visualizer | INFO | Generated graph HTML at: /media/Secondary/Projects/TemoaProject/temoa-web-gui/assets/output_files/2026-04-17_125920/Network_Graph_utopia_2010.html
+2026-04-17 12:59:34 | temoa.model_checking.commodity_graph | INFO | Generated network graphs at: /media/Secondary/Projects/TemoaProject/temoa-web-gui/assets/output_files/2026-04-17_125920/Network_Graph_utopia_2010.html
+2026-04-17 12:59:34 | temoa.model_checking.commodity_graph | INFO | Cycle detected: ELC -> ELC
+2026-04-17 12:59:34 | temoa._internal.run_actions | INFO | Started: Creating model instance
+2026-04-17 12:59:34 | temoa.components.time | INFO | Running a seasonal time slice database. This behaviour can be changed using the time_sequencing parameter in the config file.
+2026-04-17 12:59:34 | temoa.components.commodities | INFO | Missing some time slices for Demand Specific Distribution ('utopia', 1990, 'RH'): {('summer', 'night'), ('summer', 'day')}
+2026-04-17 12:59:34 | temoa.components.commodities | INFO | Missing some time slices for Demand Specific Distribution ('utopia', 2000, 'RH'): {('summer', 'night'), ('summer', 'day')}
+2026-04-17 12:59:34 | temoa.components.commodities | INFO | Missing some time slices for Demand Specific Distribution ('utopia', 2010, 'RH'): {('summer', 'night'), ('summer', 'day')}
+2026-04-17 12:59:34 | temoa._internal.run_actions | INFO | Finished: Creating model instance (Time taken: 0.06s)
+2026-04-17 12:59:34 | temoa._internal.run_actions | INFO | Model built... Variables: 1122, Constraints: 1499
+2026-04-17 12:59:34 | temoa.model_checking.pricing_check | INFO | Started price checking model: unknown
+2026-04-17 12:59:34 | temoa.model_checking.pricing_check | INFO | Finished Price Checking Build Action
+2026-04-17 12:59:34 | temoa._internal.run_actions | INFO | Started: Solving model unknown
+2026-04-17 12:59:34 | temoa._internal.run_actions | INFO | Finished: Solving model unknown (Time taken: 0.17s)
+2026-04-17 12:59:34 | temoa._internal.run_actions | INFO | Solver termination condition: optimal (optimal: True)
+2026-04-17 12:59:34 | temoa._internal.run_actions | INFO | Started: Processing results
+2026-04-17 12:59:44 | temoa._internal.run_actions | INFO | Finished: Processing results (Time taken: 10.01s)
+2026-04-17 12:59:44 | temoa.cli | ERROR | An unhandled error occurred during the Temoa run.
+Traceback (most recent call last):
+  File "/media/Secondary/Projects/TemoaProject/temoa-web-gui/.venv/lib/python3.12/site-packages/temoa/_internal/table_writer.py", line 289, in write_results
+    self.clear_scenario()
+  File "/media/Secondary/Projects/TemoaProject/temoa-web-gui/.venv/lib/python3.12/site-packages/temoa/_internal/table_writer.py", line 384, in clear_scenario
+    self.connection.commit()
+sqlite3.OperationalError: database is locked
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/media/Secondary/Projects/TemoaProject/temoa-web-gui/.venv/lib/python3.12/site-packages/temoa/cli.py", line 280, in run
+    ts.start()
+  File "/media/Secondary/Projects/TemoaProject/temoa-web-gui/.venv/lib/python3.12/site-packages/temoa/_internal/temoa_sequencer.py", line 177, in start
+    self._run_perfect_foresight()
+  File "/media/Secondary/Projects/TemoaProject/temoa-web-gui/.venv/lib/python3.12/site-packages/temoa/_internal/temoa_sequencer.py", line 259, in _run_perfect_foresight
+    handle_results(self.pf_solved_instance, self.pf_results, self.config)
+  File "/media/Secondary/Projects/TemoaProject/temoa-web-gui/.venv/lib/python3.12/site-packages/temoa/_internal/run_actions.py", line 341, in handle_results
+    table_writer.write_results(
+  File "/media/Secondary/Projects/TemoaProject/temoa-web-gui/.venv/lib/python3.12/site-packages/temoa/_internal/table_writer.py", line 326, in write_results
+    self.connection.commit()
+sqlite3.OperationalError: database is locked

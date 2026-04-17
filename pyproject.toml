@@ -5,7 +5,7 @@ description = "Web interface for Temoa Energy System Model"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "temoa>=4.0.0a1",
+    "temoa>=4.0.0",
     "fastapi",
     "uvicorn[standard]",
     "tomlkit",
