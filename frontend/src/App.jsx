@@ -351,7 +351,11 @@ function App() {
                   <option value="MGA">MGA</option>
                   <option value="myopic">Myopic</option>
                   <option value="monte_carlo">Monte Carlo</option>
+                  <option value="stochastic">Stochastic</option>
+                  <option value="SVMGA">SVMGA</option>
+                  <option value="method_of_morris">Method of Morris</option>
                   <option value="build_only">Build Only</option>
+                  <option value="check">Check Database</option>
                 </select>
               </div>
               <div>

@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from backend.main import app
+from temoa_runner import app
 
 client = TestClient(app)
 
